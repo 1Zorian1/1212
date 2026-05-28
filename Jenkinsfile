@@ -2,37 +2,42 @@ pipeline {
     agent any
 
     environment {
-        REMOTE_HOST = "192.168.0.104"
-        REMOTE_USER = "ubuntu"
+        // Налаштування цільової машини
+        REMOTE_USER = 'dev'
+        REMOTE_HOST = '192.168.0.104'
+        TARGET_NAME = 'dev-server'
     }
 
     stages {
-
         stage('Deploy Apache') {
             steps {
+                echo "Deploying to ${TARGET_NAME} server..."
                 sh """
-                ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
+                ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} "
                     sudo apt update -y
                     sudo apt install apache2 -y
                     sudo systemctl enable apache2
                     sudo systemctl start apache2
-                '
+                "
                 """
             }
         }
 
         stage('Verify Service') {
             steps {
+                echo "Checking Apache status on ${TARGET_NAME}..."
                 sh """
-                ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
-                    systemctl status apache2 --no-pager
-                '
+                ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} "
+                    systemctl is-active apache2
+                    curl -I localhost
+                "
                 """
             }
         }
 
         stage('Log Analysis 4xx/5xx') {
             steps {
+                echo "Analyzing logs on ${TARGET_NAME}..."
                 sh """
                 ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '
                     echo "----- 4xx Errors -----"
@@ -48,11 +53,10 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment successful'
+            echo "Deployment to ${TARGET_NAME} successful!"
         }
-
         failure {
-            echo 'Deployment failed'
+            echo "Deployment to ${TARGET_NAME} failed. Check network or SSH keys."
         }
     }
 }
